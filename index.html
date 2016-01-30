@@ -1,0 +1,139 @@
+<html>
+<head>
+	<script src="bower_components/phaser/build/phaser.min.js"></script>
+	<script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
+</head>
+<body>
+
+<script>
+
+	// Globals
+	var CONFIG = {};
+	CONFIG.URL = 'http://localhost/personal/td';
+	CONFIG.STAGES = { COUNT: 1 };
+
+	// Main
+	var game = new Phaser.Game(800, 600, Phaser.AUTO, '', {preload: preload, create: create, update: update});
+
+	// Stages
+	var stages = []; stages[0] = null;
+	var currentStage = null;
+
+	function Stage() {
+		var self = this;
+		this.data = null;
+	}
+
+	function preload() {
+
+		/**
+		 * Load all the stages in teh folder.
+		 */
+		for (var i = 1; i <= CONFIG.STAGES.COUNT; i++) {
+			game.load.json('stage_' + i, CONFIG.URL + '/content/stages/' + i + '/data.json');
+		}
+	}
+
+	function afterPreload() {
+		/**
+		 * Load all the stages in the stage.
+		 */
+		for (var i = 1; i <= CONFIG.STAGES.COUNT; i++) {
+			stages[i] = new Stage();
+			stages[i].data = game.cache.getJSON('stage_' + i).data;
+			var data = stages[i].data;
+
+			/**
+			 * Determine the asset types
+			 */
+			for (var j = 0; j < data.assetsGroups.length; j++) {
+				var key = data.assetsGroups[j];
+
+				/**
+				 * Now loading specific assets
+				 */
+				for (var k = 0; k < data.assets[key].length; k++) {
+					game.load.image(data.assets[key][k], CONFIG.URL + '/content/stages/' + i + '/' + key + '/' + data.assets[key][k]);
+				}
+			}
+		}
+		console.log(stages);
+	}
+
+	function loadStart() {
+		console.log('load start');
+	}
+
+	function fileComplete() {
+		console.log('file complete');
+	}
+
+	function buildStage() {
+		console.log('building stage');
+		var h = currentStage.data.attributes.size.assets.height;
+		var w = currentStage.data.attributes.size.assets.width;
+		var y = 0;
+		var x = 0;
+		for (var i = 0; i < currentStage.data.map.length; i++) {
+			for (var j = 0; j < currentStage.data.map[i].length; j++) {
+				if (currentStage.data.map[i][j] === "0") {
+					game.add.sprite(x, y, currentStage.data.tiles.other.default.value);
+				} else if (currentStage.data.map[i][j] === "t") {
+					game.add.sprite(x, y, currentStage.data.tiles.other.build.value);
+				} else if (currentStage.data.map[i][j] === "p") {
+					if (currentStage.data.map[i + 1][j] === "p") {
+						if (currentStage.data.map[i][j - 1] === "p") {
+							game.add.sprite(x, y, currentStage.data.tiles.direction.value.up.left);
+						} else if (currentStage.data.map[i][j + 1] === "p") {
+							game.add.sprite(x, y, currentStage.data.tiles.direction.value.up.right);
+						} else {
+							game.add.sprite(x, y, currentStage.data.tiles.direction.value.vertical);
+						}
+					} else if (currentStage.data.map[i][j + 1] === "p") {
+						if (currentStage.data.map[i - 1][j] === "p") {
+							game.add.sprite(x, y, currentStage.data.tiles.direction.value.down.right);
+						} else {
+							game.add.sprite(x, y, currentStage.data.tiles.direction.value.horizontal);
+						}
+					} else if (currentStage.data.map[i][j - 1] === "p") {
+						game.add.sprite(x, y, currentStage.data.tiles.direction.value.down.left);
+					}
+				}
+				x += w;
+			}
+			x = 0;
+		 	y += h;
+		}
+	}
+
+	function loadComplete() {
+		console.log('load complete');
+
+		/**
+		 * Build the stage
+		 */
+	 	currentStage = stages[1];
+		buildStage();
+	}
+
+	function create() {
+
+		afterPreload();
+		game.load.start();
+
+		game.load.onLoadStart.add(loadStart, this);
+    game.load.onFileComplete.add(fileComplete, this);
+    game.load.onLoadComplete.add(loadComplete, this);
+
+	}
+
+	function update() {
+
+
+
+	}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,79 @@
+{
+	"data": {
+		"assetsGroups": [
+			"tiles"
+		],
+		"assets": {
+			"tiles": [
+				"tile_69.png",
+				"tile_70.png",
+				"tile_118.png",
+				"tile_119.png",
+				"tile_120.png",
+				"tile_145.png",
+				"tile_146.png",
+				"tile_147.png"
+			]
+		},
+		"id": 1,
+		"attributes": {
+			"name": "Stage 1",
+			"description": "This is stage 1.",
+			"size": {
+				"map": {
+					"width": 10,
+					"height": 10
+				},
+				"assets": {
+					"width": 64,
+					"height": 64
+				}
+			}
+		},
+		"map": [
+			["0", "p", "0", "0", "0", "0", "p", "0", "0", "0"],
+			["0", "p", "0", "0", "0", "0", "p", "0", "0", "0"],
+			["t", "p", "t", "0", "0", "0", "p", "0", "0", "0"],
+			["t", "p", "t", "0", "0", "0", "p", "0", "0", "0"],
+			["0", "p", "p", "p", "p", "t", "p", "0", "0", "0"],
+			["0", "0", "0", "0", "p", "t", "p", "p", "p", "0"],
+			["0", "p", "p", "p", "p", "0", "0", "0", "p", "0"],
+			["0", "p", "0", "0", "0", "0", "0", "0", "p", "0"],
+			["0", "p", "p", "p", "p", "p", "p", "p", "p", "0"],
+			["0", "0", "0", "0", "0", "0", "0", "0", "0", "0"]
+		],
+		"tiles": {
+			"direction": {
+				"key": "p",
+				"value": {
+					"horizontal": ["tile_120.png"],
+					"vertical": ["tile_147.png"],
+					"up": {
+						"left": ["tile_119.png"],
+						"right": ["tile_118.png"]
+					},
+					"down": {
+						"left": ["tile_146.png"],
+						"right": ["tile_145.png"]
+					},
+					"left": {
+						"up": ["tile_145.png"],
+						"down": ["tile_118.png"]
+					},
+					"right": {
+						"up": ["tile_146.png"],
+						"down": ["tile_119.png"]
+					}
+				}
+			},
+			"other": {
+				"default": {
+					"value": ["tile_69.png"]
+				},
+				"build": {
+					"value": ["tile_69.png"]
+				}
+			}
+		}
+	}
+}
