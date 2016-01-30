@@ -1,6 +1,7 @@
 <html>
 <head>
 	<script src="bower_components/phaser/build/phaser.min.js"></script>
+	<script src="bower_components/pathfinding/pathfinding-browser.min.js"></script>
 	<script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
 </head>
 <body>
@@ -13,7 +14,7 @@
 	CONFIG.STAGES = { COUNT: 1 };
 
 	// Main
-	var game = new Phaser.Game(800, 600, Phaser.AUTO, '', {preload: preload, create: create, update: update});
+	var game = new Phaser.Game(800, 600, Phaser.AUTO, 'TD', {preload: preload, create: create, update: update, render: render});
 
 	// Stages
 	var stages = []; stages[0] = null;
@@ -22,7 +23,87 @@
 	function Stage() {
 		var self = this;
 		this.data = null;
+		this.pathfinding = {
+			grid: null,
+			matrix: null,
+			finder: null,
+			path: null
+		};
 	}
+
+	function formatPathfinding(matrix) {
+		var n = [];
+		for (var i = 0; i < matrix.length; i++) {
+			n.push([]);
+			for (var j = 0; j < matrix[i].length; j++) {
+				if (matrix[i][j] === "p") {
+					n[i].push(0);
+				} else {
+					n[i].push(1);
+				}
+			}
+		}
+		return n
+	}
+
+	function buildPathFinding(currentStage) {
+		currentStage.pathfinding.matrix = formatPathfinding(currentStage.data.map);
+		currentStage.pathfinding.grid = new PF.Grid(currentStage.pathfinding.matrix);
+		currentStage.pathfinding.finder = new PF.AStarFinder();
+		currentStage.pathfinding.path = currentStage.pathfinding.finder.findPath(
+			currentStage.data.pathfinding.begin.x,
+			currentStage.data.pathfinding.begin.y,
+			currentStage.data.pathfinding.end.x,
+			currentStage.data.pathfinding.end.y,
+			currentStage.pathfinding.grid
+		);
+	}
+
+	var stageLayer;;
+	function buildStage() {
+		console.log('building stage');
+
+		buildPathFinding(currentStage);
+
+		stageLayer = game.add.group();
+
+		var h = currentStage.data.attributes.size.assets.height;
+		var w = currentStage.data.attributes.size.assets.width;
+		var y = 0;
+		var x = 0;
+		for (var i = 0; i < currentStage.data.map.length; i++) {
+			for (var j = 0; j < currentStage.data.map[i].length; j++) {
+				if (currentStage.data.map[i][j] === "0") {
+					stageLayer.add(game.add.sprite(x, y, currentStage.data.tiles.other.default.value));
+				} else if (currentStage.data.map[i][j] === "t") {
+					stageLayer.add(game.add.sprite(x, y, currentStage.data.tiles.other.build.value));
+				} else if (currentStage.data.map[i][j] === "p") {
+					if (currentStage.data.map[i + 1][j] === "p") {
+						if (currentStage.data.map[i][j - 1] === "p") {
+							stageLayer.add(game.add.sprite(x, y, currentStage.data.tiles.direction.value.up.left));
+						} else if (currentStage.data.map[i][j + 1] === "p") {
+							stageLayer.add(game.add.sprite(x, y, currentStage.data.tiles.direction.value.up.right));
+						} else {
+							stageLayer.add(game.add.sprite(x, y, currentStage.data.tiles.direction.value.vertical));
+						}
+					} else if (currentStage.data.map[i][j + 1] === "p") {
+						if (currentStage.data.map[i - 1][j] === "p") {
+							stageLayer.add(game.add.sprite(x, y, currentStage.data.tiles.direction.value.down.right));
+						} else {
+							stageLayer.add(game.add.sprite(x, y, currentStage.data.tiles.direction.value.horizontal));
+						}
+					} else if (currentStage.data.map[i][j - 1] === "p") {
+						stageLayer.add(game.add.sprite(x, y, currentStage.data.tiles.direction.value.down.left));
+					}
+				}
+				x += w;
+			}
+			x = 0;
+		 	y += h;
+		}
+	}
+
+	var e;
 
 	function preload() {
 
@@ -32,6 +113,7 @@
 		for (var i = 1; i <= CONFIG.STAGES.COUNT; i++) {
 			game.load.json('stage_' + i, CONFIG.URL + '/content/stages/' + i + '/data.json');
 		}
+
 	}
 
 	function afterPreload() {
@@ -54,10 +136,20 @@
 				 */
 				for (var k = 0; k < data.assets[key].length; k++) {
 					game.load.image(data.assets[key][k], CONFIG.URL + '/content/stages/' + i + '/' + key + '/' + data.assets[key][k]);
+
+					game.load.image(data.assets[key][k], CONFIG.URL + '/content/stages/' + i + '/' + key + '/' + data.assets[key][k]);
+
+					e = game.add.sprite(64, 64, data.assets[key][k]);
+
+					e.anchor.setTo(0.5, 0.5);
+					e.scale.setTo(2, 2);
+					e.x = 633;
+					e.y = 444;
+					e.z = 9999;
+					console.log(e);
 				}
 			}
 		}
-		console.log(stages);
 	}
 
 	function loadStart() {
@@ -66,44 +158,6 @@
 
 	function fileComplete() {
 		console.log('file complete');
-	}
-
-	function buildStage() {
-		console.log('building stage');
-		var h = currentStage.data.attributes.size.assets.height;
-		var w = currentStage.data.attributes.size.assets.width;
-		var y = 0;
-		var x = 0;
-		for (var i = 0; i < currentStage.data.map.length; i++) {
-			for (var j = 0; j < currentStage.data.map[i].length; j++) {
-				if (currentStage.data.map[i][j] === "0") {
-					game.add.sprite(x, y, currentStage.data.tiles.other.default.value);
-				} else if (currentStage.data.map[i][j] === "t") {
-					game.add.sprite(x, y, currentStage.data.tiles.other.build.value);
-				} else if (currentStage.data.map[i][j] === "p") {
-					if (currentStage.data.map[i + 1][j] === "p") {
-						if (currentStage.data.map[i][j - 1] === "p") {
-							game.add.sprite(x, y, currentStage.data.tiles.direction.value.up.left);
-						} else if (currentStage.data.map[i][j + 1] === "p") {
-							game.add.sprite(x, y, currentStage.data.tiles.direction.value.up.right);
-						} else {
-							game.add.sprite(x, y, currentStage.data.tiles.direction.value.vertical);
-						}
-					} else if (currentStage.data.map[i][j + 1] === "p") {
-						if (currentStage.data.map[i - 1][j] === "p") {
-							game.add.sprite(x, y, currentStage.data.tiles.direction.value.down.right);
-						} else {
-							game.add.sprite(x, y, currentStage.data.tiles.direction.value.horizontal);
-						}
-					} else if (currentStage.data.map[i][j - 1] === "p") {
-						game.add.sprite(x, y, currentStage.data.tiles.direction.value.down.left);
-					}
-				}
-				x += w;
-			}
-			x = 0;
-		 	y += h;
-		}
 	}
 
 	function loadComplete() {
@@ -130,6 +184,31 @@
 	function update() {
 
 
+		if (game.input.keyboard.isDown(Phaser.Keyboard.LEFT))
+    {
+        e.position.x -= 4;
+    }
+    else if (game.input.keyboard.isDown(Phaser.Keyboard.RIGHT))
+    {
+        e.position.x += 4;
+				console.log(e);
+				console.log(e.x);
+    }
+
+    if (game.input.keyboard.isDown(Phaser.Keyboard.UP))
+    {
+        e.position.y -= 4;
+    }
+    else if (game.input.keyboard.isDown(Phaser.Keyboard.DOWN))
+    {
+        e.position.y += 4;
+				console.log(e);
+				console.log(e.y);
+    }
+
+	}
+
+	function render() {
 
 	}
 
