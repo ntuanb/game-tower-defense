@@ -8,18 +8,38 @@
 
 <script>
 
-	// Globals
+	/** ############################################################
+	 * Config
+	 ############################################################### */
 	var CONFIG = {};
 	CONFIG.URL = 'http://localhost/personal/td';
 	CONFIG.STAGES = { COUNT: 1 };
 
-	// Main
-	var game = new Phaser.Game(800, 600, Phaser.AUTO, 'TD', {preload: preload, create: create, update: update, render: render});
+	/** ############################################################
+	 * Main
+	 ############################################################### */
+	var game = new Phaser.Game(800, 600, Phaser.AUTO, 'TD', {
+		preload: preload, create: create, update: update, render: render
+	});
 
-	// Stages
+	/** ############################################################
+	 * Vars
+	 ############################################################### */
+	var loadingCompleted = false
 	var stages = []; stages[0] = null;
-	var currentStage = null;
 
+	var currStage;
+	var currStageBackgroundLayer;
+	var currStageEnemyLayer;
+	var currStageTurretLayer;
+
+	var currWave = 1;
+	var currWaveSpawnOrder;
+
+
+	/** ############################################################
+	 * Classes
+	 ############################################################### */
 	function Stage() {
 		var self = this;
 		this.data = null;
@@ -29,9 +49,33 @@
 			finder: null,
 			path: null
 		};
+		this.tile = {
+			height: null,
+			width: null,
+			anchor: null
+		}
 	}
 
-	function formatPathfinding(matrix) {
+	function Enemy() {
+		var self = this;
+		this.data = null;
+
+		this.pathfinding = {
+			path: currStage.pathfinding.path,
+			currIndex: 0,
+			prev: null,
+			curr: null,
+			next: currStage.pathfinding.path[0]
+		};
+
+		this.health = null;
+		this.speed = null;
+	}
+
+	/** ############################################################
+	 * Functions
+	 ############################################################### */
+	formatPathfinding = function (matrix) {
 		var n = [];
 		for (var i = 0; i < matrix.length; i++) {
 			n.push([]);
@@ -45,55 +89,59 @@
 		}
 		return n
 	}
-
-	function buildPathFinding(currentStage) {
-		currentStage.pathfinding.matrix = formatPathfinding(currentStage.data.map);
-		currentStage.pathfinding.grid = new PF.Grid(currentStage.pathfinding.matrix);
-		currentStage.pathfinding.finder = new PF.AStarFinder();
-		currentStage.pathfinding.path = currentStage.pathfinding.finder.findPath(
-			currentStage.data.pathfinding.begin.x,
-			currentStage.data.pathfinding.begin.y,
-			currentStage.data.pathfinding.end.x,
-			currentStage.data.pathfinding.end.y,
-			currentStage.pathfinding.grid
+	buildPathFinding = function(currStage) {
+		var matrix = formatPathfinding(currStage.data.map);
+		var grid = new PF.Grid(matrix);
+		var finder = new PF.AStarFinder();
+		var path = finder.findPath(
+			currStage.data.pathfinding.begin.x,
+			currStage.data.pathfinding.begin.y,
+			currStage.data.pathfinding.end.x,
+			currStage.data.pathfinding.end.y,
+			grid
 		);
+		return {
+			matrix: matrix, grid: grid, finder: finder, path: path
+		}
 	}
 
-	var stageLayer;;
-	function buildStage() {
-		console.log('building stage');
+	buildLayer = function (z) {
+		var layer = game.add.group();
+		layer.z = z;
+		return layer;
+	}
 
-		buildPathFinding(currentStage);
+	buildStage = function () {
+		currStage.pathfinding = buildPathFinding(currStage);
+		currStageBackgroundLayer = buildLayer(0);
 
-		stageLayer = game.add.group();
-
-		var h = currentStage.data.attributes.size.assets.height;
-		var w = currentStage.data.attributes.size.assets.width;
+		var h = currStage.tile.height;
+		var w = currStage.tile.width;
 		var y = 0;
 		var x = 0;
-		for (var i = 0; i < currentStage.data.map.length; i++) {
-			for (var j = 0; j < currentStage.data.map[i].length; j++) {
-				if (currentStage.data.map[i][j] === "0") {
-					stageLayer.add(game.add.sprite(x, y, currentStage.data.tiles.other.default.value));
-				} else if (currentStage.data.map[i][j] === "t") {
-					stageLayer.add(game.add.sprite(x, y, currentStage.data.tiles.other.build.value));
-				} else if (currentStage.data.map[i][j] === "p") {
-					if (currentStage.data.map[i + 1][j] === "p") {
-						if (currentStage.data.map[i][j - 1] === "p") {
-							stageLayer.add(game.add.sprite(x, y, currentStage.data.tiles.direction.value.up.left));
-						} else if (currentStage.data.map[i][j + 1] === "p") {
-							stageLayer.add(game.add.sprite(x, y, currentStage.data.tiles.direction.value.up.right));
+		for (var i = 0; i < currStage.data.map.length; i++) {
+			for (var j = 0; j < currStage.data.map[i].length; j++) {
+				if (currStage.data.map[i][j] === "0") {
+					currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.other.default));
+				} else if (currStage.data.map[i][j] === "t") {
+					currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.other.build));
+				} else if (currStage.data.map[i][j] === "p") {
+					if (currStage.data.map[i + 1][j] === "p") {
+						if (currStage.data.map[i][j - 1] === "p") {
+							currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.direction.sprite.up.left));
+						} else if (currStage.data.map[i][j + 1] === "p") {
+							currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.direction.sprite.up.right));
 						} else {
-							stageLayer.add(game.add.sprite(x, y, currentStage.data.tiles.direction.value.vertical));
+							currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.direction.sprite.vertical));
 						}
-					} else if (currentStage.data.map[i][j + 1] === "p") {
-						if (currentStage.data.map[i - 1][j] === "p") {
-							stageLayer.add(game.add.sprite(x, y, currentStage.data.tiles.direction.value.down.right));
+					} else if (currStage.data.map[i][j + 1] === "p") {
+						if (currStage.data.map[i - 1][j] === "p") {
+							currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.direction.sprite.down.right));
 						} else {
-							stageLayer.add(game.add.sprite(x, y, currentStage.data.tiles.direction.value.horizontal));
+							currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.direction.sprite.horizontal));
 						}
-					} else if (currentStage.data.map[i][j - 1] === "p") {
-						stageLayer.add(game.add.sprite(x, y, currentStage.data.tiles.direction.value.down.left));
+					} else if (currStage.data.map[i][j - 1] === "p") {
+						currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.direction.sprite.down.left));
 					}
 				}
 				x += w;
@@ -103,17 +151,116 @@
 		}
 	}
 
-	var e;
+	buildEnemy = function(enemyData) {
+		var e = new Enemy();
+		e.data = enemyData;
+		e.health = enemyData.health;
+		e.speed = enemyData.speed;
+		return e;
+	}
+
+	buildEnemiesSpawnOrder = function() {
+
+		currWaveSpawnOrder = [];
+		var mathRandom = Math.floor(Math.random() * 10); mathRandom = 0;
+		var wave = currStage.data.wave[currWave];
+		var order = wave.order;
+		var count = wave.count;
+
+		for (var i = 0; i < count; i++) {
+			var e;
+			if (wave.order === 'random') {
+				if (mathRandom < 3) {
+					e = buildEnemy(wave.size["small"]);
+					e.size = "1";
+					currWaveSpawnOrder.push(e);
+				}
+			}
+		}
+
+	}
+
+	buildEnemies = function() {
+		for (var i = 0; i < currWaveSpawnOrder.length; i++) {
+			var e = currWaveSpawnOrder[i];
+			var s = game.add.sprite(currStage.tile.height, currStage.tile.height, e.data.sprite);
+			s.anchor.setTo(0.5, 0.5);
+			s.x = currStage.tile.anchor + 64;
+			s.y = currStage.tile.anchor - (64 * i);
+			e.sprite = s;
+			currWaveSpawnOrder[i] = e;
+		}
+	}
+
+	moveEnemies = function() {
+		var pf = currStage.pathfinding.path;
+
+		for (var i = 0; i < currWaveSpawnOrder.length; i++) {
+			var e = currWaveSpawnOrder[i];
+			if (e.pathfinding.curr === null) {
+				if (e.sprite.y <= (e.pathfinding.next[1] * currStage.tile.height + currStage.tile.anchor)) {
+					e.sprite.y += e.speed;
+				} else if (e.sprite.x <= (e.pathfinding.next[0] * currStage.tile.width + currStage.tile.anchor)) {
+					e.sprite.x += e.speed;
+				}
+				// Update curr and now;
+				// 64 97
+				if ((e.pathfinding.next[0] * currStage.tile.width + currStage.tile.anchor) === e.sprite.x) {
+					e.pathfinding.curr = e.pathfinding.next;
+					e.pathfinding.currIndex += 1;
+					e.pathfinding.next = e.pathfinding.path[e.pathfinding.currIndex];
+				}
+			} else {
+				if (e.pathfinding.curr[0] === e.pathfinding.next[0]) {
+					// Only moving through y
+					if (e.pathfinding.curr[1] < e.pathfinding.next[1]) {
+						e.sprite.y += e.speed;
+					} else {
+						e.sprite.y -= e.speed;
+					}
+					if ((e.pathfinding.next[1] * currStage.tile.width) + currStage.tile.anchor === e.sprite.y) {
+						console.log(e.pathfinding.next[0] * currStage.tile.width + currStage.tile.anchor + '=?' + e.sprite.x);
+						e.pathfinding.curr = e.pathfinding.next;
+						e.pathfinding.currIndex += 1;
+						e.pathfinding.next = e.pathfinding.path[e.pathfinding.currIndex];
+						console.log(e.pathfinding.next);
+					}
+				} else {
+					// only moving thruogh x
+					if (e.pathfinding.curr[0] < e.pathfinding.next[0]) {
+						e.sprite.x += e.speed;
+					} else {
+						e.sprite.x -= e.speed;
+					}
+					if ((e.pathfinding.next[0] * currStage.tile.width) + currStage.tile.anchor === e.sprite.x) {
+						e.pathfinding.curr = e.pathfinding.next;
+						e.pathfinding.currIndex += 1;
+						e.pathfinding.next = e.pathfinding.path[e.pathfinding.currIndex];
+					}
+				}
+
+				// if ((e.pathfinding.next[1] * currStage.tile.width) + currStage.tile.anchor === e.sprite.y) {
+				// 	console.log(e.pathfinding.next[0] * currStage.tile.width + currStage.tile.anchor + '=?' + e.sprite.x);
+				// 	e.pathfinding.curr = e.pathfinding.next;
+				// 	e.pathfinding.currIndex += 1;
+				// 	e.pathfinding.next = e.pathfinding.path[e.pathfinding.currIndex];
+				// } else if ((e.pathfinding.next[0] * currStage.tile.width) + currStage.tile.anchor === e.sprite.x) {
+				// 	console.log('time to move right')
+				// }
+			}
+
+			// e.sprite.x += e.speed;
+			// e.sprite.y += e.speed;
+		}
+	}
 
 	function preload() {
-
 		/**
 		 * Load all the stages in teh folder.
 		 */
 		for (var i = 1; i <= CONFIG.STAGES.COUNT; i++) {
 			game.load.json('stage_' + i, CONFIG.URL + '/content/stages/' + i + '/data.json');
 		}
-
 	}
 
 	function afterPreload() {
@@ -123,6 +270,9 @@
 		for (var i = 1; i <= CONFIG.STAGES.COUNT; i++) {
 			stages[i] = new Stage();
 			stages[i].data = game.cache.getJSON('stage_' + i).data;
+			stages[i].tile.height = stages[i].data.attributes.size.assets.height;
+			stages[i].tile.width = stages[i].data.attributes.size.assets.width;
+			stages[i].tile.anchor = (stages[i].data.attributes.size.assets.width) / 2;
 			var data = stages[i].data;
 
 			/**
@@ -132,24 +282,23 @@
 				var key = data.assetsGroups[j];
 
 				/**
-				 * Now loading specific assets
+				 * Now loading all specific assets
 				 */
 				for (var k = 0; k < data.assets[key].length; k++) {
 					game.load.image(data.assets[key][k], CONFIG.URL + '/content/stages/' + i + '/' + key + '/' + data.assets[key][k]);
-
-					game.load.image(data.assets[key][k], CONFIG.URL + '/content/stages/' + i + '/' + key + '/' + data.assets[key][k]);
-
-					e = game.add.sprite(64, 64, data.assets[key][k]);
-
-					e.anchor.setTo(0.5, 0.5);
-					e.scale.setTo(2, 2);
-					e.x = 633;
-					e.y = 444;
-					e.z = 9999;
-					console.log(e);
 				}
 			}
 		}
+	}
+
+	function actuallyCreate() {
+		currStage = stages[1];
+
+		buildStage();
+		buildEnemiesSpawnOrder();
+		buildEnemies();
+
+		loadingCompleted = true;
 	}
 
 	function loadStart() {
@@ -162,54 +311,24 @@
 
 	function loadComplete() {
 		console.log('load complete');
-
-		/**
-		 * Build the stage
-		 */
-	 	currentStage = stages[1];
-		buildStage();
+		actuallyCreate();
 	}
 
 	function create() {
-
 		afterPreload();
 		game.load.start();
-
 		game.load.onLoadStart.add(loadStart, this);
     game.load.onFileComplete.add(fileComplete, this);
     game.load.onLoadComplete.add(loadComplete, this);
-
 	}
 
 	function update() {
-
-
-		if (game.input.keyboard.isDown(Phaser.Keyboard.LEFT))
-    {
-        e.position.x -= 4;
-    }
-    else if (game.input.keyboard.isDown(Phaser.Keyboard.RIGHT))
-    {
-        e.position.x += 4;
-				console.log(e);
-				console.log(e.x);
-    }
-
-    if (game.input.keyboard.isDown(Phaser.Keyboard.UP))
-    {
-        e.position.y -= 4;
-    }
-    else if (game.input.keyboard.isDown(Phaser.Keyboard.DOWN))
-    {
-        e.position.y += 4;
-				console.log(e);
-				console.log(e.y);
-    }
-
 	}
 
 	function render() {
-
+		if (loadingCompleted === true) {
+			moveEnemies();
+		}
 	}
 
 </script>

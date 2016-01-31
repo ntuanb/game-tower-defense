@@ -13,6 +13,9 @@
 				"tile_145.png",
 				"tile_146.png",
 				"tile_147.png"
+			],
+			"enemies": [
+				"manBlue_hold.png"
 			]
 		},
 		"id": 1,
@@ -55,7 +58,7 @@
 		"tiles": {
 			"direction": {
 				"key": "p",
-				"value": {
+				"sprite": {
 					"horizontal": ["tile_120.png"],
 					"vertical": ["tile_147.png"],
 					"up": {
@@ -77,17 +80,21 @@
 				}
 			},
 			"other": {
-				"default": {
-					"value": ["tile_69.png"]
-				},
-				"build": {
-					"value": ["tile_69.png"]
-				}
+				"default": ["tile_69.png"],
+				"build": ["tile_69.png"]
 			}
 		},
 		"wave": {
 			"1": {
-				
+				"count": 3,
+				"order": "random",
+				"size": {
+					"small": {
+						"health": 1,
+						"speed": 1,
+						"sprite": ["tile_145.png"]
+					}
+				}
 			}
 		}
 	}
