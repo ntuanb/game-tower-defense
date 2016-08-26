@@ -1,8 +1,7 @@
 <html>
 <head>
-	<script src="bower_components/phaser/build/phaser.min.js"></script>
-	<script src="bower_components/pathfinding/pathfinding-browser.min.js"></script>
-	<script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
+	<script src="www/js/packages.min.js"></script>
+	<script src="www/js/app.min.js"></script>
 </head>
 <body>
 
@@ -12,7 +11,7 @@
 	 * Config
 	 ############################################################### */
 	var CONFIG = {};
-	CONFIG.URL = 'http://localhost/personal/td';
+	CONFIG.URL = 'http://localhost:8080';
 	CONFIG.STAGES = { COUNT: 1 };
 
 	/** ############################################################
@@ -259,7 +258,10 @@
 		 * Load all the stages in teh folder.
 		 */
 		for (var i = 1; i <= CONFIG.STAGES.COUNT; i++) {
-			game.load.json('stage_' + i, CONFIG.URL + '/content/stages/' + i + '/data.json');
+			var s = 'stage_' + i;
+			var j = CONFIG.URL + '/content/stages/' + i + '/data.json';
+			console.log('Loading: ', s, j);
+			game.load.json(s, j);
 		}
 	}
 
@@ -318,8 +320,8 @@
 		afterPreload();
 		game.load.start();
 		game.load.onLoadStart.add(loadStart, this);
-    game.load.onFileComplete.add(fileComplete, this);
-    game.load.onLoadComplete.add(loadComplete, this);
+	    game.load.onFileComplete.add(fileComplete, this);
+	    game.load.onLoadComplete.add(loadComplete, this);
 	}
 
 	function update() {
