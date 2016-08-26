@@ -3,335 +3,337 @@
 	<script src="www/js/packages.min.js"></script>
 	<script src="www/js/app.min.js"></script>
 </head>
-<body>
+<body ng-app="game" ng-controller="GameController">
+
+	<div ng-view></div>
 
 <script>
 
-	/** ############################################################
-	 * Config
-	 ############################################################### */
-	var CONFIG = {};
-	CONFIG.URL = 'http://localhost:8080';
-	CONFIG.STAGES = { COUNT: 1 };
-
-	/** ############################################################
-	 * Main
-	 ############################################################### */
-	var game = new Phaser.Game(800, 600, Phaser.AUTO, 'TD', {
-		preload: preload, create: create, update: update, render: render
-	});
-
-	/** ############################################################
-	 * Vars
-	 ############################################################### */
-	var loadingCompleted = false
-	var stages = []; stages[0] = null;
-
-	var currStage;
-	var currStageBackgroundLayer;
-	var currStageEnemyLayer;
-	var currStageTurretLayer;
-
-	var currWave = 1;
-	var currWaveSpawnOrder;
-
-
-	/** ############################################################
-	 * Classes
-	 ############################################################### */
-	function Stage() {
-		var self = this;
-		this.data = null;
-		this.pathfinding = {
-			grid: null,
-			matrix: null,
-			finder: null,
-			path: null
-		};
-		this.tile = {
-			height: null,
-			width: null,
-			anchor: null
-		}
-	}
-
-	function Enemy() {
-		var self = this;
-		this.data = null;
-
-		this.pathfinding = {
-			path: currStage.pathfinding.path,
-			currIndex: 0,
-			prev: null,
-			curr: null,
-			next: currStage.pathfinding.path[0]
-		};
-
-		this.health = null;
-		this.speed = null;
-	}
-
-	/** ############################################################
-	 * Functions
-	 ############################################################### */
-	formatPathfinding = function (matrix) {
-		var n = [];
-		for (var i = 0; i < matrix.length; i++) {
-			n.push([]);
-			for (var j = 0; j < matrix[i].length; j++) {
-				if (matrix[i][j] === "p") {
-					n[i].push(0);
-				} else {
-					n[i].push(1);
-				}
-			}
-		}
-		return n
-	}
-	buildPathFinding = function(currStage) {
-		var matrix = formatPathfinding(currStage.data.map);
-		var grid = new PF.Grid(matrix);
-		var finder = new PF.AStarFinder();
-		var path = finder.findPath(
-			currStage.data.pathfinding.begin.x,
-			currStage.data.pathfinding.begin.y,
-			currStage.data.pathfinding.end.x,
-			currStage.data.pathfinding.end.y,
-			grid
-		);
-		return {
-			matrix: matrix, grid: grid, finder: finder, path: path
-		}
-	}
-
-	buildLayer = function (z) {
-		var layer = game.add.group();
-		layer.z = z;
-		return layer;
-	}
-
-	buildStage = function () {
-		currStage.pathfinding = buildPathFinding(currStage);
-		currStageBackgroundLayer = buildLayer(0);
-
-		var h = currStage.tile.height;
-		var w = currStage.tile.width;
-		var y = 0;
-		var x = 0;
-		for (var i = 0; i < currStage.data.map.length; i++) {
-			for (var j = 0; j < currStage.data.map[i].length; j++) {
-				if (currStage.data.map[i][j] === "0") {
-					currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.other.default));
-				} else if (currStage.data.map[i][j] === "t") {
-					currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.other.build));
-				} else if (currStage.data.map[i][j] === "p") {
-					if (currStage.data.map[i + 1][j] === "p") {
-						if (currStage.data.map[i][j - 1] === "p") {
-							currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.direction.sprite.up.left));
-						} else if (currStage.data.map[i][j + 1] === "p") {
-							currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.direction.sprite.up.right));
-						} else {
-							currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.direction.sprite.vertical));
-						}
-					} else if (currStage.data.map[i][j + 1] === "p") {
-						if (currStage.data.map[i - 1][j] === "p") {
-							currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.direction.sprite.down.right));
-						} else {
-							currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.direction.sprite.horizontal));
-						}
-					} else if (currStage.data.map[i][j - 1] === "p") {
-						currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.direction.sprite.down.left));
-					}
-				}
-				x += w;
-			}
-			x = 0;
-		 	y += h;
-		}
-	}
-
-	buildEnemy = function(enemyData) {
-		var e = new Enemy();
-		e.data = enemyData;
-		e.health = enemyData.health;
-		e.speed = enemyData.speed;
-		return e;
-	}
-
-	buildEnemiesSpawnOrder = function() {
-
-		currWaveSpawnOrder = [];
-		var mathRandom = Math.floor(Math.random() * 10); mathRandom = 0;
-		var wave = currStage.data.wave[currWave];
-		var order = wave.order;
-		var count = wave.count;
-
-		for (var i = 0; i < count; i++) {
-			var e;
-			if (wave.order === 'random') {
-				if (mathRandom < 3) {
-					e = buildEnemy(wave.size["small"]);
-					e.size = "1";
-					currWaveSpawnOrder.push(e);
-				}
-			}
-		}
-
-	}
-
-	buildEnemies = function() {
-		for (var i = 0; i < currWaveSpawnOrder.length; i++) {
-			var e = currWaveSpawnOrder[i];
-			var s = game.add.sprite(currStage.tile.height, currStage.tile.height, e.data.sprite);
-			s.anchor.setTo(0.5, 0.5);
-			s.x = currStage.tile.anchor + 64;
-			s.y = currStage.tile.anchor - (64 * i);
-			e.sprite = s;
-			currWaveSpawnOrder[i] = e;
-		}
-	}
-
-	moveEnemies = function() {
-		var pf = currStage.pathfinding.path;
-
-		for (var i = 0; i < currWaveSpawnOrder.length; i++) {
-			var e = currWaveSpawnOrder[i];
-			if (e.pathfinding.curr === null) {
-				if (e.sprite.y <= (e.pathfinding.next[1] * currStage.tile.height + currStage.tile.anchor)) {
-					e.sprite.y += e.speed;
-				} else if (e.sprite.x <= (e.pathfinding.next[0] * currStage.tile.width + currStage.tile.anchor)) {
-					e.sprite.x += e.speed;
-				}
-				// Update curr and now;
-				// 64 97
-				if ((e.pathfinding.next[0] * currStage.tile.width + currStage.tile.anchor) === e.sprite.x) {
-					e.pathfinding.curr = e.pathfinding.next;
-					e.pathfinding.currIndex += 1;
-					e.pathfinding.next = e.pathfinding.path[e.pathfinding.currIndex];
-				}
-			} else {
-				if (e.pathfinding.curr[0] === e.pathfinding.next[0]) {
-					// Only moving through y
-					if (e.pathfinding.curr[1] < e.pathfinding.next[1]) {
-						e.sprite.y += e.speed;
-					} else {
-						e.sprite.y -= e.speed;
-					}
-					if ((e.pathfinding.next[1] * currStage.tile.width) + currStage.tile.anchor === e.sprite.y) {
-						console.log(e.pathfinding.next[0] * currStage.tile.width + currStage.tile.anchor + '=?' + e.sprite.x);
-						e.pathfinding.curr = e.pathfinding.next;
-						e.pathfinding.currIndex += 1;
-						e.pathfinding.next = e.pathfinding.path[e.pathfinding.currIndex];
-						console.log(e.pathfinding.next);
-					}
-				} else {
-					// only moving thruogh x
-					if (e.pathfinding.curr[0] < e.pathfinding.next[0]) {
-						e.sprite.x += e.speed;
-					} else {
-						e.sprite.x -= e.speed;
-					}
-					if ((e.pathfinding.next[0] * currStage.tile.width) + currStage.tile.anchor === e.sprite.x) {
-						e.pathfinding.curr = e.pathfinding.next;
-						e.pathfinding.currIndex += 1;
-						e.pathfinding.next = e.pathfinding.path[e.pathfinding.currIndex];
-					}
-				}
-
-				// if ((e.pathfinding.next[1] * currStage.tile.width) + currStage.tile.anchor === e.sprite.y) {
-				// 	console.log(e.pathfinding.next[0] * currStage.tile.width + currStage.tile.anchor + '=?' + e.sprite.x);
-				// 	e.pathfinding.curr = e.pathfinding.next;
-				// 	e.pathfinding.currIndex += 1;
-				// 	e.pathfinding.next = e.pathfinding.path[e.pathfinding.currIndex];
-				// } else if ((e.pathfinding.next[0] * currStage.tile.width) + currStage.tile.anchor === e.sprite.x) {
-				// 	console.log('time to move right')
-				// }
-			}
-
-			// e.sprite.x += e.speed;
-			// e.sprite.y += e.speed;
-		}
-	}
-
-	function preload() {
-		/**
-		 * Load all the stages in teh folder.
-		 */
-		for (var i = 1; i <= CONFIG.STAGES.COUNT; i++) {
-			var s = 'stage_' + i;
-			var j = CONFIG.URL + '/content/stages/' + i + '/data.json';
-			console.log('Loading: ', s, j);
-			game.load.json(s, j);
-		}
-	}
-
-	function afterPreload() {
-		/**
-		 * Load all the stages in the stage.
-		 */
-		for (var i = 1; i <= CONFIG.STAGES.COUNT; i++) {
-			stages[i] = new Stage();
-			stages[i].data = game.cache.getJSON('stage_' + i).data;
-			stages[i].tile.height = stages[i].data.attributes.size.assets.height;
-			stages[i].tile.width = stages[i].data.attributes.size.assets.width;
-			stages[i].tile.anchor = (stages[i].data.attributes.size.assets.width) / 2;
-			var data = stages[i].data;
-
-			/**
-			 * Determine the asset types
-			 */
-			for (var j = 0; j < data.assetsGroups.length; j++) {
-				var key = data.assetsGroups[j];
-
-				/**
-				 * Now loading all specific assets
-				 */
-				for (var k = 0; k < data.assets[key].length; k++) {
-					game.load.image(data.assets[key][k], CONFIG.URL + '/content/stages/' + i + '/' + key + '/' + data.assets[key][k]);
-				}
-			}
-		}
-	}
-
-	function actuallyCreate() {
-		currStage = stages[1];
-
-		buildStage();
-		buildEnemiesSpawnOrder();
-		buildEnemies();
-
-		loadingCompleted = true;
-	}
-
-	function loadStart() {
-		console.log('load start');
-	}
-
-	function fileComplete() {
-		console.log('file complete');
-	}
-
-	function loadComplete() {
-		console.log('load complete');
-		actuallyCreate();
-	}
-
-	function create() {
-		afterPreload();
-		game.load.start();
-		game.load.onLoadStart.add(loadStart, this);
-	    game.load.onFileComplete.add(fileComplete, this);
-	    game.load.onLoadComplete.add(loadComplete, this);
-	}
-
-	function update() {
-	}
-
-	function render() {
-		if (loadingCompleted === true) {
-			moveEnemies();
-		}
-	}
+	// /** ############################################################
+	//  * Config
+	//  ############################################################### */
+	// var CONFIG = {};
+	// CONFIG.URL = 'http://localhost:8080';
+	// CONFIG.STAGES = { COUNT: 1 };
+	//
+	// /** ############################################################
+	//  * Main
+	//  ############################################################### */
+	// var game = new Phaser.Game(800, 600, Phaser.AUTO, 'TD', {
+	// 	preload: preload, create: create, update: update, render: render
+	// });
+	//
+	// /** ############################################################
+	//  * Vars
+	//  ############################################################### */
+	// var loadingCompleted = false
+	// var stages = []; stages[0] = null;
+	//
+	// var currStage;
+	// var currStageBackgroundLayer;
+	// var currStageEnemyLayer;
+	// var currStageTurretLayer;
+	//
+	// var currWave = 1;
+	// var currWaveSpawnOrder;
+	//
+	//
+	// /** ############################################################
+	//  * Classes
+	//  ############################################################### */
+	// function Stage() {
+	// 	var self = this;
+	// 	this.data = null;
+	// 	this.pathfinding = {
+	// 		grid: null,
+	// 		matrix: null,
+	// 		finder: null,
+	// 		path: null
+	// 	};
+	// 	this.tile = {
+	// 		height: null,
+	// 		width: null,
+	// 		anchor: null
+	// 	}
+	// }
+	//
+	// function Enemy() {
+	// 	var self = this;
+	// 	this.data = null;
+	//
+	// 	this.pathfinding = {
+	// 		path: currStage.pathfinding.path,
+	// 		currIndex: 0,
+	// 		prev: null,
+	// 		curr: null,
+	// 		next: currStage.pathfinding.path[0]
+	// 	};
+	//
+	// 	this.health = null;
+	// 	this.speed = null;
+	// }
+	//
+	// /** ############################################################
+	//  * Functions
+	//  ############################################################### */
+	// formatPathfinding = function (matrix) {
+	// 	var n = [];
+	// 	for (var i = 0; i < matrix.length; i++) {
+	// 		n.push([]);
+	// 		for (var j = 0; j < matrix[i].length; j++) {
+	// 			if (matrix[i][j] === "p") {
+	// 				n[i].push(0);
+	// 			} else {
+	// 				n[i].push(1);
+	// 			}
+	// 		}
+	// 	}
+	// 	return n
+	// }
+	// buildPathFinding = function(currStage) {
+	// 	var matrix = formatPathfinding(currStage.data.map);
+	// 	var grid = new PF.Grid(matrix);
+	// 	var finder = new PF.AStarFinder();
+	// 	var path = finder.findPath(
+	// 		currStage.data.pathfinding.begin.x,
+	// 		currStage.data.pathfinding.begin.y,
+	// 		currStage.data.pathfinding.end.x,
+	// 		currStage.data.pathfinding.end.y,
+	// 		grid
+	// 	);
+	// 	return {
+	// 		matrix: matrix, grid: grid, finder: finder, path: path
+	// 	}
+	// }
+	//
+	// buildLayer = function (z) {
+	// 	var layer = game.add.group();
+	// 	layer.z = z;
+	// 	return layer;
+	// }
+	//
+	// buildStage = function () {
+	// 	currStage.pathfinding = buildPathFinding(currStage);
+	// 	currStageBackgroundLayer = buildLayer(0);
+	//
+	// 	var h = currStage.tile.height;
+	// 	var w = currStage.tile.width;
+	// 	var y = 0;
+	// 	var x = 0;
+	// 	for (var i = 0; i < currStage.data.map.length; i++) {
+	// 		for (var j = 0; j < currStage.data.map[i].length; j++) {
+	// 			if (currStage.data.map[i][j] === "0") {
+	// 				currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.other.default));
+	// 			} else if (currStage.data.map[i][j] === "t") {
+	// 				currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.other.build));
+	// 			} else if (currStage.data.map[i][j] === "p") {
+	// 				if (currStage.data.map[i + 1][j] === "p") {
+	// 					if (currStage.data.map[i][j - 1] === "p") {
+	// 						currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.direction.sprite.up.left));
+	// 					} else if (currStage.data.map[i][j + 1] === "p") {
+	// 						currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.direction.sprite.up.right));
+	// 					} else {
+	// 						currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.direction.sprite.vertical));
+	// 					}
+	// 				} else if (currStage.data.map[i][j + 1] === "p") {
+	// 					if (currStage.data.map[i - 1][j] === "p") {
+	// 						currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.direction.sprite.down.right));
+	// 					} else {
+	// 						currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.direction.sprite.horizontal));
+	// 					}
+	// 				} else if (currStage.data.map[i][j - 1] === "p") {
+	// 					currStageBackgroundLayer.add(game.add.sprite(x, y, currStage.data.tiles.direction.sprite.down.left));
+	// 				}
+	// 			}
+	// 			x += w;
+	// 		}
+	// 		x = 0;
+	// 	 	y += h;
+	// 	}
+	// }
+	//
+	// buildEnemy = function(enemyData) {
+	// 	var e = new Enemy();
+	// 	e.data = enemyData;
+	// 	e.health = enemyData.health;
+	// 	e.speed = enemyData.speed;
+	// 	return e;
+	// }
+	//
+	// buildEnemiesSpawnOrder = function() {
+	//
+	// 	currWaveSpawnOrder = [];
+	// 	var mathRandom = Math.floor(Math.random() * 10); mathRandom = 0;
+	// 	var wave = currStage.data.wave[currWave];
+	// 	var order = wave.order;
+	// 	var count = wave.count;
+	//
+	// 	for (var i = 0; i < count; i++) {
+	// 		var e;
+	// 		if (wave.order === 'random') {
+	// 			if (mathRandom < 3) {
+	// 				e = buildEnemy(wave.size["small"]);
+	// 				e.size = "1";
+	// 				currWaveSpawnOrder.push(e);
+	// 			}
+	// 		}
+	// 	}
+	//
+	// }
+	//
+	// buildEnemies = function() {
+	// 	for (var i = 0; i < currWaveSpawnOrder.length; i++) {
+	// 		var e = currWaveSpawnOrder[i];
+	// 		var s = game.add.sprite(currStage.tile.height, currStage.tile.height, e.data.sprite);
+	// 		s.anchor.setTo(0.5, 0.5);
+	// 		s.x = currStage.tile.anchor + 64;
+	// 		s.y = currStage.tile.anchor - (64 * i);
+	// 		e.sprite = s;
+	// 		currWaveSpawnOrder[i] = e;
+	// 	}
+	// }
+	//
+	// moveEnemies = function() {
+	// 	var pf = currStage.pathfinding.path;
+	//
+	// 	for (var i = 0; i < currWaveSpawnOrder.length; i++) {
+	// 		var e = currWaveSpawnOrder[i];
+	// 		if (e.pathfinding.curr === null) {
+	// 			if (e.sprite.y <= (e.pathfinding.next[1] * currStage.tile.height + currStage.tile.anchor)) {
+	// 				e.sprite.y += e.speed;
+	// 			} else if (e.sprite.x <= (e.pathfinding.next[0] * currStage.tile.width + currStage.tile.anchor)) {
+	// 				e.sprite.x += e.speed;
+	// 			}
+	// 			// Update curr and now;
+	// 			// 64 97
+	// 			if ((e.pathfinding.next[0] * currStage.tile.width + currStage.tile.anchor) === e.sprite.x) {
+	// 				e.pathfinding.curr = e.pathfinding.next;
+	// 				e.pathfinding.currIndex += 1;
+	// 				e.pathfinding.next = e.pathfinding.path[e.pathfinding.currIndex];
+	// 			}
+	// 		} else {
+	// 			if (e.pathfinding.curr[0] === e.pathfinding.next[0]) {
+	// 				// Only moving through y
+	// 				if (e.pathfinding.curr[1] < e.pathfinding.next[1]) {
+	// 					e.sprite.y += e.speed;
+	// 				} else {
+	// 					e.sprite.y -= e.speed;
+	// 				}
+	// 				if ((e.pathfinding.next[1] * currStage.tile.width) + currStage.tile.anchor === e.sprite.y) {
+	// 					console.log(e.pathfinding.next[0] * currStage.tile.width + currStage.tile.anchor + '=?' + e.sprite.x);
+	// 					e.pathfinding.curr = e.pathfinding.next;
+	// 					e.pathfinding.currIndex += 1;
+	// 					e.pathfinding.next = e.pathfinding.path[e.pathfinding.currIndex];
+	// 					console.log(e.pathfinding.next);
+	// 				}
+	// 			} else {
+	// 				// only moving thruogh x
+	// 				if (e.pathfinding.curr[0] < e.pathfinding.next[0]) {
+	// 					e.sprite.x += e.speed;
+	// 				} else {
+	// 					e.sprite.x -= e.speed;
+	// 				}
+	// 				if ((e.pathfinding.next[0] * currStage.tile.width) + currStage.tile.anchor === e.sprite.x) {
+	// 					e.pathfinding.curr = e.pathfinding.next;
+	// 					e.pathfinding.currIndex += 1;
+	// 					e.pathfinding.next = e.pathfinding.path[e.pathfinding.currIndex];
+	// 				}
+	// 			}
+	//
+	// 			// if ((e.pathfinding.next[1] * currStage.tile.width) + currStage.tile.anchor === e.sprite.y) {
+	// 			// 	console.log(e.pathfinding.next[0] * currStage.tile.width + currStage.tile.anchor + '=?' + e.sprite.x);
+	// 			// 	e.pathfinding.curr = e.pathfinding.next;
+	// 			// 	e.pathfinding.currIndex += 1;
+	// 			// 	e.pathfinding.next = e.pathfinding.path[e.pathfinding.currIndex];
+	// 			// } else if ((e.pathfinding.next[0] * currStage.tile.width) + currStage.tile.anchor === e.sprite.x) {
+	// 			// 	console.log('time to move right')
+	// 			// }
+	// 		}
+	//
+	// 		// e.sprite.x += e.speed;
+	// 		// e.sprite.y += e.speed;
+	// 	}
+	// }
+	//
+	// function preload() {
+	// 	/**
+	// 	 * Load all the stages in teh folder.
+	// 	 */
+	// 	for (var i = 1; i <= CONFIG.STAGES.COUNT; i++) {
+	// 		var s = 'stage_' + i;
+	// 		var j = CONFIG.URL + '/content/stages/' + i + '/data.json';
+	// 		console.log('Loading: ', s, j);
+	// 		game.load.json(s, j);
+	// 	}
+	// }
+	//
+	// function afterPreload() {
+	// 	/**
+	// 	 * Load all the stages in the stage.
+	// 	 */
+	// 	for (var i = 1; i <= CONFIG.STAGES.COUNT; i++) {
+	// 		stages[i] = new Stage();
+	// 		stages[i].data = game.cache.getJSON('stage_' + i).data;
+	// 		stages[i].tile.height = stages[i].data.attributes.size.assets.height;
+	// 		stages[i].tile.width = stages[i].data.attributes.size.assets.width;
+	// 		stages[i].tile.anchor = (stages[i].data.attributes.size.assets.width) / 2;
+	// 		var data = stages[i].data;
+	//
+	// 		/**
+	// 		 * Determine the asset types
+	// 		 */
+	// 		for (var j = 0; j < data.assetsGroups.length; j++) {
+	// 			var key = data.assetsGroups[j];
+	//
+	// 			/**
+	// 			 * Now loading all specific assets
+	// 			 */
+	// 			for (var k = 0; k < data.assets[key].length; k++) {
+	// 				game.load.image(data.assets[key][k], CONFIG.URL + '/content/stages/' + i + '/' + key + '/' + data.assets[key][k]);
+	// 			}
+	// 		}
+	// 	}
+	// }
+	//
+	// function actuallyCreate() {
+	// 	currStage = stages[1];
+	//
+	// 	buildStage();
+	// 	buildEnemiesSpawnOrder();
+	// 	buildEnemies();
+	//
+	// 	loadingCompleted = true;
+	// }
+	//
+	// function loadStart() {
+	// 	console.log('load start');
+	// }
+	//
+	// function fileComplete() {
+	// 	console.log('file complete');
+	// }
+	//
+	// function loadComplete() {
+	// 	console.log('load complete');
+	// 	actuallyCreate();
+	// }
+	//
+	// function create() {
+	// 	afterPreload();
+	// 	game.load.start();
+	// 	game.load.onLoadStart.add(loadStart, this);
+	//     game.load.onFileComplete.add(fileComplete, this);
+	//     game.load.onLoadComplete.add(loadComplete, this);
+	// }
+	//
+	// function update() {
+	// }
+	//
+	// function render() {
+	// 	if (loadingCompleted === true) {
+	// 		moveEnemies();
+	// 	}
+	// }
 
 </script>
 

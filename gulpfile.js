@@ -17,6 +17,7 @@ var paths = {
 var packages = [
 	"bower_components/lodash/dist/lodash.min.js",
 	"bower_components/angular/angular.min.js",
+	"bower_components/angular-route/angular-route.min.js",
 	"bower_components/phaser/build/phaser.min.js",
 	"bower_components/pathfinding/pathfinding-browser.min.js"
 ];
@@ -30,10 +31,7 @@ var folders = ['controllers', 'helpers', 'models', 'services'];
 for (var i = 0; i < folders.length; i++) {
     scripts.push('src/js/' + folders[i] + '/module.js');
     scripts.push('src/js/' + folders[i] + '/*.js');
-    log.print('Loading folder: ' + folders[i] + '.');
 };
-
-log.newline();
 
 gulp.task('jsPackages', function() {
     return gulp.src(packages)

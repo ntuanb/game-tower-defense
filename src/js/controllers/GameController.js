@@ -1,8 +1,10 @@
+"use strict";
+
 function GameControllerFunction(
     $scope, $rootScope, $timeout
 ) {
-    
+
 };
 
-angular.module('optergy.controllers')
+angular.module('game.controllers')
     .controller('GameController', GameControllerFunction);

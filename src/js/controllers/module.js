@@ -1,4 +1,4 @@
-angular.module('optergy.controllers', [
+angular.module('game.controllers', [
 ]);
 
 console.log('controlleres')

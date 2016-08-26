@@ -1,11 +1,11 @@
-angular.module('optergy', [
-    'optergy.controllers'
+angular.module('game', [
+    'game.controllers'
 ]).run(function() {
 
 }).config(function($stateProvider) {
     $stateProvider
-        .state('app', {
-            url: '/app',
+        .state('game', {
+            url: '/game',
             templateUrl: 'src/js/views/game.html',
             controller: 'GameController'
         });
