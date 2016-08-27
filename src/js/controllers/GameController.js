@@ -3,7 +3,7 @@
 function GameControllerFunction(
     $scope, $rootScope, $timeout
 ) {
-
+    
 };
 
 angular.module('game.controllers')

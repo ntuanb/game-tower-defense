@@ -1,6 +1,7 @@
 var gulp = require('gulp');
 var sourcemaps = require('gulp-sourcemaps');
 var concat = require('gulp-concat');
+var _ = require('lodash');
 
 /**
  * Log
@@ -14,24 +15,26 @@ var paths = {
     js: ['./src/js/**/*.js']
 };
 
-var packages = [
-	"bower_components/lodash/dist/lodash.min.js",
-	"bower_components/angular/angular.min.js",
-	"bower_components/angular-route/angular-route.min.js",
-	"bower_components/phaser/build/phaser.min.js",
-	"bower_components/pathfinding/pathfinding-browser.min.js"
-];
+var packages = _.map([
+	"lodash/dist/lodash.min.js",
+	"angular/angular.min.js",
+	"angular-route/angular-route.min.js",
+    "angular-ui-router/release/angular-ui-router.min.js",
+	"phaser/build/phaser.min.js",
+	"pathfinding/pathfinding-browser.min.js"
+], function(o) {
+    return 'bower_components/' + o;
+});
 
 var scripts = [
     'src/js/app.js'
 ];
 
-var folders = ['controllers', 'helpers', 'models', 'services'];
-
-for (var i = 0; i < folders.length; i++) {
-    scripts.push('src/js/' + folders[i] + '/module.js');
-    scripts.push('src/js/' + folders[i] + '/*.js');
-};
+var folders = ['controllers', 'helpers', 'models', 'services', 'directives'];
+_.forEach(folders, function(f) {
+    scripts.push('src/js/' + f + '/module.js');
+    scripts.push('src/js/' + f + '/*.js');
+});
 
 gulp.task('jsPackages', function() {
     return gulp.src(packages)

@@ -1,12 +1,17 @@
 angular.module('game', [
+    'ui.router',
     'game.controllers'
 ]).run(function() {
 
-}).config(function($stateProvider) {
+}).config(function(
+    $stateProvider, $urlRouterProvider
+) {
     $stateProvider
         .state('game', {
-            url: '/game',
-            templateUrl: 'src/js/views/game.html',
+            url: '/',
+            templateUrl: 'src/views/game.html',
             controller: 'GameController'
         });
+
+     $urlRouterProvider.otherwise('/game');
 });
