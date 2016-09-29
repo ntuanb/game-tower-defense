@@ -30,7 +30,14 @@ var scripts = [
     'src/js/app.js'
 ];
 
-var folders = ['controllers', 'helpers', 'models', 'services', 'directives'];
+var folders = [
+    'components',
+    'controllers',
+    'helpers',
+    'models',
+    'services',
+    'directives'
+];
 _.forEach(folders, function(f) {
     scripts.push('src/js/' + f + '/module.js');
     scripts.push('src/js/' + f + '/*.js');
