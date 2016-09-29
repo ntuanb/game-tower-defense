@@ -1,5 +1,5 @@
 angular.module('game.components').component('window', {
-    template: '<iframe id="init"></iframe>',
+    template: '<game></game>',
     controller: function WindowController() {
         console.log('gameWindow')
     }

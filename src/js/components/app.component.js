@@ -1,6 +1,6 @@
 angular.module('game.components').component('app', {
-    template: '	<game></game>',
-    controller: function AppController() {
-        console.log('app')
+    template: '<window></window>',
+    controller: function AppController(Stage) {
+        Stage.load();
     }
 });
