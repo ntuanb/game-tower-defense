@@ -1,11 +1,11 @@
-angular.module('game.services').factory('modelStage', StageModel);
+angular.module('game.services').factory('mStage', StageModel);
 
 function StageModel() {
 
-    var r = function() {
+    var r = function(data) {
     	var self = this;
 
-    	this.data = null;
+    	this.data = data;
 
     	this.pathfinding = {
     		grid: null,
@@ -15,9 +15,9 @@ function StageModel() {
     	};
 
     	this.tile = {
-    		height: null,
-    		width: null,
-    		anchor: null
+    		height: data.attributes.size.assets.height,
+    		width: data.attributes.size.assets.width,
+    		anchor: (data.attributes.size.assets.width) / 2
     	}
     }
 

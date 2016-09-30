@@ -4,11 +4,9 @@ angular.module('game.components')
 });
 
 function GameController(
-    State, Data, Stage, Enemy, Pathfinding,
-    modelStage
+    State, Data, Stage, Enemy, Pathfinding, Log,
+    mStage
 ) {
-    console.log('Game controller...');
-
     var self = this;
 
     State.startLoading();
@@ -18,67 +16,50 @@ function GameController(
     });
 
     function preload() {
-        console.log('Preload...');
+        Log.debug('Preloading.');
 
         for (var i = 1; i <= 1; i++) {
     		var s = 'stage_' + i;
     		var j = Data.url + '/www/content/stages/' + i + '/data.json';
-    		console.log('Loading: ', s, j);
-    		game.load.json(s, j);
+            game.load.json(s, j);
+    		Log.debug('Loading:', s, j);
             Stage.addStage(s);
     	}
-
-
     }
 
     function update() {
     }
 
 	function loadStart() {
-		console.log('load start');
+        Log.debug('Load start...');
 	}
 
 	function fileComplete() {
-		console.log('file complete');
+        Log.debug('File completed:', arguments[1]);
+
 	}
 
 	function loadComplete() {
-		console.log('load complete');
+        Log.debug('Load completed...');
 	}
 
     function create() {
-        console.log('Create...');
-        console.log(Stage.stages);
-        Stage.stages = _.map(Stage.stages, function(name, iter) {
-    		var stage = new modelStage();
-            var i = iter += 1;
-
-    		stage.data = game.cache.getJSON('stage_' + i).data;
-    		stage.tile.height = stage.data.attributes.size.assets.height;
-    		stage.tile.width = stage.data.attributes.size.assets.width;
-    		stage.tile.anchor = (stage.data.attributes.size.assets.width) / 2;
-    		var data = stage.data;
-
-    		/**
-    		 * Determine the asset types
-    		 */
-    		for (var j = 0; j < data.assetsGroups.length; j++) {
-    			var key = data.assetsGroups[j];
-
-    			/**
-    			 * Now loading all specific assets
-    			 */
-    			for (var k = 0; k < data.assets[key].length; k++) {
-    				game.load.image(data.assets[key][k], Data.url + '/www/content/stages/' + i + '/' + key + '/' + data.assets[key][k]);
-    			}
-    		}
-            return stage;
-        });
+        Log.debug('Create...');
 
         game.load.start();
         game.load.onLoadStart.add(loadStart, this);
         game.load.onFileComplete.add(fileComplete, this);
         game.load.onLoadComplete.add(loadComplete, this);
+
+        Stage.stages = _.map(Stage.stages, function(name, iter) {
+            var i = iter += 1;
+            var data =  game.cache.getJSON('stage_' + i).data;
+    		var stage = new mStage(data);
+
+            Data.loadJsonMap(game, data.assets);
+
+            return stage;
+        });
         console.log(game)
         console.log('Complete.');
         console.log(Stage.stages);
@@ -91,7 +72,6 @@ function GameController(
 		var h = currStage.tile.height;
 		var w = currStage.tile.width;
 		var y = 0;
-		var x = 0;
 		for (var i = 0; i < currStage.data.map.length; i++) {
 			for (var j = 0; j < currStage.data.map[i].length; j++) {
 				if (currStage.data.map[i][j] === "0") {

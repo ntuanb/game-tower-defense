@@ -34,11 +34,5 @@ function PathfindingFunction() {
 		}
 	}
 
-    this.buildLayer = function (game, z) {
-		var layer = game.add.group();
-		layer.z = z;
-		return layer;
-	}
-
     return self;
 }
