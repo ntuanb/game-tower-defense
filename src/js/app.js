@@ -1,7 +1,8 @@
 angular.module('game', [
     'ui.router',
     'game.controllers',
-    'game.components'
+    'game.components',
+    'game.services'
 ]).run(function() {
 
 }).config(function(

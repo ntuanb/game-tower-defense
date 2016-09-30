@@ -1,8 +1,7 @@
-angular.module('this.services').factory('Data', DataFunction);
+angular.module('game.services').factory('Enemy', EnemyFunction);
 
-function DataFunction() {
+function EnemyFunction() {
     var self = this;
-
 
     this.enemies = [];
 

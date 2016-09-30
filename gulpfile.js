@@ -31,11 +31,11 @@ var scripts = [
 ];
 
 var folders = [
+    'services',
     'components',
     'controllers',
     'helpers',
     'models',
-    'services',
     'directives'
 ];
 _.forEach(folders, function(f) {
@@ -62,8 +62,12 @@ gulp.task('js', function() {
         .pipe(gulp.dest('www/js'));
 });
 
+gulp.task('stages', function() {
+    return gulp.src(['content/**/*']).pipe(gulp.dest('www/content'));
+})
+
 gulp.task('watch', function() {
     gulp.watch(paths.js, ['js']);
 });
 
-gulp.task('default', ['js']);
+gulp.task('default', ['stages', 'js']);

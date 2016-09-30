@@ -1,6 +1,6 @@
 angular.module('game.services').factory('Stage', StageFunction);
 
-function StageFunction() {
+function StageFunction(Pathfinding) {
     var self = this;
 
     this.stages = [];
@@ -10,9 +10,17 @@ function StageFunction() {
         pathfinding: null,
     };
 
-    this.load = function() {
-
+    this.all = function() {
+        return self.stages;
     }
+
+    this.addStage = function(s) {
+        self.stages.push(s);
+    }
+
+    this.construct = function (game, currStage) {
+        console.log('Constructing...')
+	}
 
     return self;
 }
